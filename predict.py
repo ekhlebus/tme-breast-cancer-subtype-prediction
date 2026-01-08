@@ -1,58 +1,54 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-#import requests
+# 1. Run this script to start a local web service for subtype prediction: 
+#         python predict.py
+#    Note: If we don't want to reload on every code change, we can run instead: 
+#         uvicorn predict:app --host 0.0.0.0 --port 9696 --reload
+
+# 2. Go to http://localhost:9696/docs in browser to see the interactive API documentation.
+
+# 3. To get the prediction we need to sent patient data as json not just a POST request:
+#
+
 import pandas as pd
 import pickle
 
+import uvicorn
+from fastapi import FastAPI
+from typing import Dict
 
-# Local prediction service
-# url = "http://localhost:9696/predict"
-# # url = "http://127.0.0.1:9696/predict"  # alternative
+
+# Define the application using FastAPI
+app = FastAPI(title='subtype-prediction')
 
 # Load the model from the file model.bin
 with open('model.bin', 'rb') as f_in:
     pipeline = pickle.load(f_in)
 
-patient_id = "TCGA-XX-YYYY"
+# Function to make a prediction for a single patient based on immune composition
+def predict_single(patient: Dict[str, float]):
+    # Convert JSON → DataFrame
+    X_patient = pd.DataFrame([patient])
 
-# Example patient immune composition (CIBERSORT-style fractions)
-patient = {
-    "B.cells.naive": 0.02,
-    "B.cells.memory": 0.05,
-    "Plasma.cells": 0.01,
-    "T.cells.CD8": 0.12,
-    "T.cells.CD4.naive": 0.03,
-    "T.cells.CD4.memory.resting": 0.18,
-    "T.cells.CD4.memory.activated": 0.04,
-    "T.cells.follicular.helper": 0.02,
-    "T.cells.regulatory..Tregs.": 0.03,
-    "T.cells.gamma.delta": 0.01,
-    "NK.cells.resting": 0.06,
-    "NK.cells.activated": 0.02,
-    "Monocytes": 0.09,
-    "Macrophages.M0": 0.15,
-    "Macrophages.M1": 0.07,
-    "Macrophages.M2": 0.06,
-    "Dendritic.cells.resting": 0.01,
-    "Dendritic.cells.activated": 0.01,
-    "Mast.cells.resting": 0.01,
-    "Mast.cells.activated": 0.00,
-    "Eosinophils": 0.00,
-    "Neutrophils": 0.01,
-    "age": 57
-}
+    # Predict probability of Basal-like subtype
+    response = pipeline.predict_proba(X_patient)[0, 1]
 
-# Convert to DataFrame
-X_patient = pd.DataFrame([patient])
+    return response
 
-# Predict probability of Basal-like subtype
-response = pipeline.predict_proba(X_patient)[0, 1]
-#response = requests.post(url, json=patient, timeout=5).json()
-print(f"Basal probability: {response:.3f}")
 
-# Interpret model output
-if response >= 0.5:
-    print(f"Patient {patient_id}: predicted Basal-like subtype")
-else:
-    print(f"Patient {patient_id}: predicted Luminal (A/B) subtype")
+# Add decorator to turn function into web service
+# Tell FastAPI that we expect a dictionary as input
+@app.post("/predict")  # This function will be accessible at address /predict using POST method
+def predict(patient: Dict[str, float]):
+    subtype_responce = predict_single(patient)
+    
+    return {
+        "Basal_probability": float(subtype_responce),
+        "Predicted_subtype": "Basal-like" if subtype_responce >= 0.5 else "Luminal (A/B)"
+    }
+
+# We are using "__main__" top-level script environment to run the app
+if __name__ == "__main__":
+    # Run the app on port 9696 at localhost
+    uvicorn.run(app, host='0.0.0.0', port=9696) 
