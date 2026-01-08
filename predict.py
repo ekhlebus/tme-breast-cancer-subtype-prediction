@@ -2,14 +2,17 @@
 # coding: utf-8
 
 # 1. Run this script to start a local web service for subtype prediction: 
-#         python predict.py
-#    Note: If we don't want to reload on every code change, we can run instead: 
-#         uvicorn predict:app --host 0.0.0.0 --port 9696 --reload
+#    ```python predict.py````
+#    Note: If we don't want to reload web service on every code change, we can run instead: 
+#    ```uvicorn predict:app --host 0.0.0.0 --port 9696 --reload````
 
-# 2. Go to http://localhost:9696/docs in browser to see the interactive API documentation.
+# 2. Go to http://localhost:9696/docs in browser to see the interactive API documentation. Press 'Try it out' button to test the service.
 
-# 3. To get the prediction we need to sent patient data as json not just a POST request:
-#
+# 3. To get the prediction sent patient data as json. For example, copy-paste data from patient_basal.json or patient_luminal.json into the 'Edit Value' field in the docs page.
+#    OR
+#    Use the following script to send a request to the web service:
+#    ```python request.py```
+
 
 import pandas as pd
 import pickle
